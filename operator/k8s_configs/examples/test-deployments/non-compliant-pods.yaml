@@ -1,0 +1,162 @@
+# Test pods for compliance checking
+# Deploy these to test the operator's validation logic
+
+---
+# Namespace for test pods
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-compliance
+  annotations:
+    cost-governance.io/allowed-cost-centers: "CC-1234,CC-1235"
+
+---
+# ✅ COMPLIANT POD - All required labels with valid values
+apiVersion: v1
+kind: Pod
+metadata:
+  name: compliant-pod-1
+  namespace: test-compliance
+  labels:
+    cost-center: "CC-1234"
+    business-unit: "engineering"
+    team: "platform-team"
+    application: "api-service"
+    environment: "prod"
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+
+---
+# ✅ COMPLIANT POD - Different BU
+apiVersion: v1
+kind: Pod
+metadata:
+  name: compliant-pod-2
+  namespace: test-compliance
+  labels:
+    cost-center: "CC-2100"
+    business-unit: "product"
+    team: "product-api-team"
+    application: "frontend"
+    environment: "staging"
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+
+---
+# ❌ NON-COMPLIANT POD - Missing required labels
+apiVersion: v1
+kind: Pod
+metadata:
+  name: missing-labels-pod
+  namespace: test-compliance
+  labels:
+    application: "test-app"
+    # Missing: cost-center, business-unit, team, environment
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+
+---
+# ❌ NON-COMPLIANT POD - Invalid cost-center
+apiVersion: v1
+kind: Pod
+metadata:
+  name: invalid-cost-center-pod
+  namespace: test-compliance
+  labels:
+    cost-center: "CC-9999"  # Not in registry
+    business-unit: "engineering"
+    team: "platform-team"
+    application: "test-service"
+    environment: "dev"
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+
+---
+# ❌ NON-COMPLIANT POD - Invalid team for business unit
+apiVersion: v1
+kind: Pod
+metadata:
+  name: invalid-team-pod
+  namespace: test-compliance
+  labels:
+    cost-center: "CC-1234"
+    business-unit: "engineering"
+    team: "sales-team"  # Sales team doesn't exist in engineering BU
+    application: "test-app"
+    environment: "dev"
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+
+---
+# ❌ NON-COMPLIANT POD - Invalid environment
+apiVersion: v1
+kind: Pod
+metadata:
+  name: invalid-env-pod
+  namespace: test-compliance
+  labels:
+    cost-center: "CC-1234"
+    business-unit: "engineering"
+    team: "platform-team"
+    application: "test-app"
+    environment: "production"  # Should be "prod", not "production"
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+
+---
+# ❌ NON-COMPLIANT POD - Multiple violations
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multiple-violations-pod
+  namespace: test-compliance
+  labels:
+    cost-center: "CC-9999"  # Invalid
+    business-unit: "invalid-bu"  # Invalid
+    team: "nonexistent-team"  # Invalid
+    application: "test-app"
+    environment: "qa"  # Invalid (should be dev, staging, or prod)
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"

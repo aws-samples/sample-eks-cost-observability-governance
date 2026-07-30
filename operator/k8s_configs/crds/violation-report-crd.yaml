@@ -1,0 +1,150 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: violationreports.cost-governance.io
+spec:
+  group: cost-governance.io
+  names:
+    kind: ViolationReport
+    listKind: ViolationReportList
+    plural: violationreports
+    singular: violationreport
+    shortNames:
+      - vr
+      - violations
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - scanTime
+                - costGovernanceRef
+              properties:
+                scanTime:
+                  type: string
+                  format: date-time
+                  description: "Time when the compliance scan was performed"
+                costGovernanceRef:
+                  type: string
+                  description: "Name of the CostGovernance resource this report belongs to"
+                totalPods:
+                  type: integer
+                  description: "Total number of pods scanned"
+                compliantPods:
+                  type: integer
+                  description: "Number of compliant pods"
+                violatingPods:
+                  type: integer
+                  description: "Number of pods with violations"
+                complianceRate:
+                  type: number
+                  format: float
+                  description: "Compliance rate percentage (0-100)"
+                violations:
+                  type: array
+                  description: "List of individual pod violations"
+                  items:
+                    type: object
+                    required:
+                      - pod
+                      - namespace
+                      - violations
+                    properties:
+                      pod:
+                        type: string
+                        description: "Pod name"
+                      namespace:
+                        type: string
+                        description: "Pod namespace"
+                      labels:
+                        type: object
+                        additionalProperties:
+                          type: string
+                        description: "Current pod labels"
+                      violations:
+                        type: array
+                        description: "List of violations for this pod"
+                        items:
+                          type: object
+                          required:
+                            - type
+                            - message
+                          properties:
+                            type:
+                              type: string
+                              enum:
+                                - MissingLabel
+                                - InvalidValue
+                                - UnauthorizedNamespace
+                                - MissingResourceRequests
+                                - ExceedsResourceThreshold
+                              description: "Type of violation"
+                            label:
+                              type: string
+                              description: "Label name (for label-related violations)"
+                            value:
+                              type: string
+                              description: "Current value (for invalid value violations)"
+                            validValues:
+                              type: array
+                              items:
+                                type: string
+                              description: "List of valid values"
+                            message:
+                              type: string
+                              description: "Human-readable violation message"
+                violationSummary:
+                  type: object
+                  description: "Summary statistics by violation type"
+                  properties:
+                    byType:
+                      type: object
+                      additionalProperties:
+                        type: integer
+                      description: "Count of violations by type"
+                    byNamespace:
+                      type: object
+                      additionalProperties:
+                        type: integer
+                      description: "Count of violations by namespace"
+                    byLabel:
+                      type: object
+                      additionalProperties:
+                        type: integer
+                      description: "Count of violations by label name"
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  enum:
+                    - Active
+                    - Archived
+                  description: "Report lifecycle phase"
+                createdAt:
+                  type: string
+                  format: date-time
+                  description: "When the report was created"
+      additionalPrinterColumns:
+        - name: Scan Time
+          type: string
+          jsonPath: .spec.scanTime
+        - name: Scanned Pods
+          type: integer
+          jsonPath: .spec.totalPods
+        - name: Violations
+          type: integer
+          jsonPath: .spec.violatingPods
+        - name: Compliance %
+          type: number
+          jsonPath: .spec.complianceRate
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp

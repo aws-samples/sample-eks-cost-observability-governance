@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cost-governance-operator
+  labels:
+    app: cost-governance-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cost-governance-operator
+subjects:
+- kind: ServiceAccount
+  name: cost-governance-operator
+  namespace: cost-governance-system
