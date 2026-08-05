@@ -17,3 +17,4 @@ htmlcov/
 *.tfstate*
 *.tfvars
 **/tfplan
+.protoshield/

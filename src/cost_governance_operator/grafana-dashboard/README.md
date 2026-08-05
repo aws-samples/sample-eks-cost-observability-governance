@@ -334,7 +334,7 @@ The dashboard uses Grafana's built-in annotation support. You can add annotation
 **Or via API:**
 ```bash
 # Export dashboard JSON
-curl -H "Authorization: Bearer YOUR_API_KEY" \
+curl -H "Authorization: Bearer $GRAFANA_API_KEY" \
   http://localhost:3000/api/dashboards/uid/cost-governance-operator | \
   jq .dashboard > backup.json
 ```
