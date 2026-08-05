@@ -183,7 +183,7 @@ jq --version
 
 ### Step 1: Configure for Your Environment
 
-Update the deployment environment variables in `operator/k8s_configs/deployment/deployment.yaml`:
+Update the deployment environment variables in `src/cost_governance_operator/k8s_configs/deployment/deployment.yaml`:
 
 ```yaml
 env:
@@ -203,7 +203,7 @@ env:
 
 ### Step 2: Update IAM Policy
 
-Edit `operator/k8s_configs/iam/athena-access-policy.json` and update the S3 bucket ARNs to match your account:
+Edit `src/cost_governance_operator/k8s_configs/iam/athena-access-policy.json` and update the S3 bucket ARNs to match your account:
 
 ```json
 {
@@ -327,10 +327,10 @@ INFO: Handler 'create_fn' succeeded.
 
 ```bash
 kubectl get cg -n cost-governance-system
+#expected output:
+NAME                 TOTAL COST   APP COST   INFRA COST   AGE
+default-governance   $51.66       $2.64      $19.10       6h28m
 
-# Expected output:
-# NAME                 TOTAL COST   APP COST   INFRA COST   AGE
-# default-governance   $10.87       $1.50      $9.37        5m
 ```
 
 ### 4. Check Cost Collection Status
@@ -433,7 +433,7 @@ http://localhost:3000
 
 The operator exposes **15 Prometheus metrics** at `http://<service>:8000/metrics`.
 
-For complete metrics documentation, see: [`PROMETHEUS-METRICS.md`](./operator/PROMETHEUS-METRICS.md)
+For complete metrics documentation, see: [`PROMETHEUS-METRICS.md`](./src/cost_governance_operator/PROMETHEUS-METRICS.md)
 
 ### Metrics Summary
 
@@ -871,7 +871,7 @@ spec:
 
 To modify which namespaces or components are categorized as infrastructure, edit:
 
-**File:** `src/utils/cluster_infrastructure_config.py`
+**File:** `src/cost_governance_operator/utils/cluster_infrastructure_config.py`
 
 **Add new namespace category:**
 ```python
@@ -951,7 +951,7 @@ A pre-built Grafana dashboard is provided with **17 panels** covering all cost, 
 4. Import dashboard:
    - Click **"+"** (Create) → **"Import"**
    - Click **"Upload JSON file"**
-   - Select: `grafana-dashboard/cost-governance-dashboard.json`
+   - Select: `src/cost_governance_operator/grafana-dashboard/cost-governance-dashboard.json`
    - Select **Prometheus** datasource
    - Click **"Import"**
 
@@ -961,7 +961,7 @@ If your Grafana is configured to auto-discover dashboards:
 
 ```bash
 kubectl create configmap cost-governance-dashboard \
-  --from-file=cost-governance-dashboard.json=./grafana-dashboard/cost-governance-dashboard.json \
+  --from-file=cost-governance-dashboard.json=./src/cost_governance_operator/grafana-dashboard/cost-governance-dashboard.json \
   -n monitoring \
   --dry-run=client -o yaml | \
   kubectl label -f - grafana_dashboard=1 --local --dry-run=client -o yaml | \
@@ -972,7 +972,7 @@ kubectl create configmap cost-governance-dashboard \
 
 For complete dashboard documentation (panel queries, customization, troubleshooting), see:
 
-**[`grafana-dashboard/README.md`](./grafana-dashboard/README.md)**
+**[`grafana-dashboard/README.md`](./src/cost_governance_operator/grafana-dashboard/README.md)**
 
 ---
 
@@ -1118,25 +1118,6 @@ kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 909
 - **Solution:** Verify IAM policy includes `athena:StartQueryExecution`, `s3:GetObject`, `s3:PutObject`, `glue:GetDatabase`
 
 ---
-
-## Kyverno Governance Policies
-
-The `governance_policies/` folder contains Kyverno `ValidatingPolicy` resources (requires Kyverno v1.18+) that enforce cost attribution labels at admission time:
-
-- **`kyverno-require-cost-labels.yaml`** — Validates that pods have all required labels (`cost-center`, `business-unit`, `team`, `application`, `environment`)
-- **`kyverno-validate-cost-label-values.yaml`** — Validates label values match approved formats and lists (environment must be `dev`/`staging`/`prod`, cost-center must match `CC-NNNN`, etc.)
-
-Deploy with:
-```bash
-kubectl apply -f governance_policies/
-```
-
-Check violations:
-```bash
-kubectl get policyreport -A
-```
-
-> **Note:** The Kyverno value validation policy uses hardcoded allowed values in the CEL expressions. If you add new business units, cost centers, or environments, you must update the policy YAML and re-apply. For dynamic value validation that reads from a central registry without policy redeployment, use the operator's ConfigMap-based registry (`registryConfigMap` in the CostGovernance spec). The two approaches are complementary: Kyverno blocks at admission, the operator scans continuously.
 
 ---
 
@@ -1367,5 +1348,5 @@ curl http://localhost:8000/metrics | grep cost_governance
 
 # 6. Import Grafana dashboard
 kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
-# Open http://localhost:3000 → Import → Upload grafana-dashboard/cost-governance-dashboard.json
+# Open http://localhost:3000 → Import → Upload src/cost_governance_operator/grafana-dashboard/cost-governance-dashboard.json
 ```
