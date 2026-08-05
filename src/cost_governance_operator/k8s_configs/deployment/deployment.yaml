@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cost-governance-operator
+  namespace: cost-governance-system
+  labels:
+    app: cost-governance-operator
+    version: v1alpha1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cost-governance-operator
+  template:
+    metadata:
+      labels:
+        app: cost-governance-operator
+        version: v1alpha1
+        cost-center: "ADP1001"
+        business-unit: "Acme-Data-Platform"
+        team: "platform"
+        application: "cost-governance-operator"
+        environment: "development"
+    spec:
+      serviceAccountName: cost-governance-operator
+      containers:
+      - name: operator
+        image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/cost-governance-operator:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: health
+          protocol: TCP
+        - containerPort: 8000
+          name: metrics
+          protocol: TCP
+        env:
+        - name: AWS_REGION
+          value: "us-east-1"
+        - name: ATHENA_DATABASE
+          value: "billingdata"
+        - name: ATHENA_TABLE
+          value: "data"
+        - name: ATHENA_WORKGROUP
+          value: "primary"
+        - name: ATHENA_S3_OUTPUT
+          value: "s3://cost-usage-data-125192672223/"
+        - name: PROMETHEUS_URL
+          value: "http://prometheus-server.monitoring.svc:9090"
+        - name: COST_LOOKBACK_DAYS
+          value: "10"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: HEALTH_PORT
+          value: "8080"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+      restartPolicy: Always

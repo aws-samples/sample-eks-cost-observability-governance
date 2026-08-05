@@ -9,12 +9,12 @@ authors = [
 requires-python = ">=3.14"
 dependencies = []
 
-[project.scripts]
-sample-eks-cost-observability-governance = "sample_eks_cost_observability_governance:main"
-
 [build-system]
 requires = ["uv_build>=0.12.0,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "cost_governance_operator"
 
 [dependency-groups]
 dev = [

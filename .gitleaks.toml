@@ -1,0 +1,6 @@
+[allowlist]
+  description = "Global allowlist for false positives"
+  paths = [
+    '''operator/grafana-dashboard/README\.md''',
+    '''src/cost_governance_operator/grafana-dashboard/README\.md'''
+  ]

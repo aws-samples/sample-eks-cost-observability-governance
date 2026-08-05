@@ -1,0 +1,62 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AthenaQueryExecution",
+      "Effect": "Allow",
+      "Action": [
+        "athena:StartQueryExecution",
+        "athena:GetQueryExecution",
+        "athena:GetQueryResults",
+        "athena:StopQueryExecution",
+        "athena:GetWorkGroup"
+      ],
+      "Resource": [
+        "arn:aws:athena:*:*:workgroup/*"
+      ]
+    },
+    {
+      "Sid": "GlueAccess",
+      "Effect": "Allow",
+      "Action": [
+        "glue:GetDatabase",
+        "glue:GetTable",
+        "glue:GetPartitions"
+      ],
+      "Resource": [
+        "arn:aws:glue:*:*:catalog",
+        "arn:aws:glue:*:*:database/*",
+        "arn:aws:glue:*:*:table/*/*"
+      ]
+    },
+    {
+      "Sid": "S3AthenaResultsBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:AbortMultipartUpload",
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": [
+        "arn:aws:s3:::cost-usage-data-125192672223",
+        "arn:aws:s3:::cost-usage-data-125192672223/*"
+      ]
+    },
+    {
+      "Sid": "S3CURDataRead",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": [
+        "arn:aws:s3:::cost-usage-data-125192672223",
+        "arn:aws:s3:::cost-usage-data-125192672223/*"
+      ]
+    }
+  ]
+}

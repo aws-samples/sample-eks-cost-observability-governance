@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cost-governance-operator
+  namespace: cost-governance-system
+  labels:
+    app: cost-governance-operator
+    release: prometheus  # Match your Prometheus Operator release label
+spec:
+  namespaceSelector:
+    matchNames:
+    - cost-governance-system
+  selector:
+    matchLabels:
+      app: cost-governance-operator
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+    scheme: http

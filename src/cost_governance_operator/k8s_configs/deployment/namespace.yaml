@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cost-governance-system
+  labels:
+    app: cost-governance-operator
+    control-plane: operator

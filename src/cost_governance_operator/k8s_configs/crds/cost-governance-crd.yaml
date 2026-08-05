@@ -1,0 +1,194 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: costgovernances.cost-governance.io
+spec:
+  group: cost-governance.io
+  names:
+    kind: CostGovernance
+    listKind: CostGovernanceList
+    plural: costgovernances
+    singular: costgovernance
+    shortNames:
+    - cg
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            description: "CostGovernance specification"
+            properties:
+              requiredLabels:
+                type: array
+                description: "List of required cost attribution labels"
+                items:
+                  type: string
+                default:
+                - cost-center
+                - business-unit
+                - team
+                - application
+                - environment
+
+              resourceThresholds:
+                type: object
+                description: "Resource thresholds for high-cost workload detection"
+                properties:
+                  cpu:
+                    type: string
+                    description: "CPU threshold (e.g., '4')"
+                    default: "4"
+                  memory:
+                    type: string
+                    description: "Memory threshold (e.g., '16Gi')"
+                    default: "16Gi"
+                  requiresGpuApproval:
+                    type: boolean
+                    description: "Whether GPU workloads require approval"
+                    default: true
+
+              registryConfigMap:
+                type: object
+                description: "Reference to ConfigMap containing cost governance registry"
+                properties:
+                  name:
+                    type: string
+                    description: "ConfigMap name"
+                  namespace:
+                    type: string
+                    description: "ConfigMap namespace"
+
+              enforcementMode:
+                type: string
+                description: "Enforcement mode: audit or enforce"
+                enum:
+                - audit
+                - enforce
+                default: audit
+
+              collectionSchedule:
+                type: string
+                description: "Cron schedule for cost data collection (e.g., '0 6 * * *')"
+                default: "0 6 * * *"
+
+              costCollection:
+                type: object
+                description: "Athena cost collection configuration"
+                properties:
+                  enabled:
+                    type: boolean
+                    description: "Enable cost data collection from Athena"
+                    default: true
+                  athenaDatabase:
+                    type: string
+                    description: "Athena database name containing CUR data"
+                    default: "billingdata"
+                  athenaTable:
+                    type: string
+                    description: "CUR table name in Athena"
+                    default: "data"
+                  s3OutputLocation:
+                    type: string
+                    description: "S3 bucket for Athena query results"
+                  clusterName:
+                    type: string
+                    description: "EKS cluster name to filter costs"
+                  lookbackDays:
+                    type: integer
+                    description: "Number of days to look back for cost data"
+                    default: 7
+                  region:
+                    type: string
+                    description: "AWS region"
+                    default: "us-east-1"
+
+          status:
+            type: object
+            description: "CostGovernance status"
+            properties:
+              lastCollectionTime:
+                type: string
+                format: date-time
+                description: "Timestamp of last cost collection"
+
+              complianceRate:
+                type: number
+                format: float
+                description: "Percentage of compliant pods (0-100)"
+
+              totalPods:
+                type: integer
+                description: "Total number of pods monitored"
+
+              violatingPods:
+                type: integer
+                description: "Number of pods with violations"
+
+              conditions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    status:
+                      type: string
+                    lastTransitionTime:
+                      type: string
+                      format: date-time
+                    reason:
+                      type: string
+                    message:
+                      type: string
+
+              costData:
+                type: object
+                description: "Cost collection data from Athena"
+                x-kubernetes-preserve-unknown-fields: true
+
+    subresources:
+      status: {}
+
+    additionalPrinterColumns:
+    - name: Total Cost
+      type: string
+      description: Total cluster cost for the reporting period
+      jsonPath: .status.costData.summary.totalCost
+      priority: 0
+    - name: App Cost
+      type: string
+      description: Application workload costs
+      jsonPath: .status.costData.clusterCostBreakdown.application.totalCost
+      priority: 0
+    - name: Infra Cost
+      type: string
+      description: Cluster infrastructure costs
+      jsonPath: .status.costData.clusterCostBreakdown.clusterInfrastructure.totalCost
+      priority: 0
+    - name: Compliance
+      type: string
+      description: Percentage of compliant pods
+      jsonPath: .status.complianceRate
+      format: float
+      priority: 1
+    - name: Attribution
+      type: string
+      description: Percentage of costs attributed to teams
+      jsonPath: .status.costData.attribution.attributionRate
+      format: float
+      priority: 1
+    - name: Scanned Pods
+      type: integer
+      description: Total number of pods monitored
+      jsonPath: .status.totalPods
+      priority: 1
+    - name: Age
+      type: date
+      jsonPath: .metadata.creationTimestamp
+      priority: 0
