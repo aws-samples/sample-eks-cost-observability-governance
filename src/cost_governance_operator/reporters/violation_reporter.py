@@ -11,10 +11,11 @@ Usage:
     reporter.report_violations(summary, cg_name, cg_namespace)
 """
 
+import logging
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
+
 from kubernetes import client
-import logging
 
 
 class ViolationReporter:
@@ -236,7 +237,11 @@ class ViolationReporter:
                     'validValues': valid_values,
                     'message': message
                 }
-        elif 'missing resource requests' in message.lower() or 'missing CPU request' in message or 'missing memory request' in message:
+        elif (
+            'missing resource requests' in message.lower()
+            or 'missing CPU request' in message
+            or 'missing memory request' in message
+        ):
             return 'MissingResourceRequests', {
                 'type': 'MissingResourceRequests',
                 'message': message

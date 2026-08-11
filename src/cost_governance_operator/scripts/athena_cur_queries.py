@@ -4,10 +4,11 @@ Athena CUR 2.0 Query Examples
 Demonstrates various cost analysis queries for EKS using CUR 2.0 data.
 """
 
-import boto3
-import time
 import sys
+import time
 from datetime import datetime, timedelta
+
+import boto3
 
 # Configuration
 AWS_REGION = 'us-east-1'

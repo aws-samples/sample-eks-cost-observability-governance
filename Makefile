@@ -8,6 +8,10 @@ endif
 
 AWS_REGION ?= us-east-1
 
+# Export variables so child processes (pytest, docker, aws cli) can see them
+export AWS_PROFILE
+export AWS_REGION
+
 # Operator paths
 OPERATOR_DIR := src/cost_governance_operator
 

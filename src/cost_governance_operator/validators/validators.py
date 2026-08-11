@@ -15,8 +15,9 @@ Usage:
 
 import logging
 from typing import Dict, List, Optional
-from kubernetes import client, config as k8s_config
 
+from kubernetes import client
+from kubernetes import config as k8s_config
 from utils.registry import Registry
 
 logger = logging.getLogger(__name__)

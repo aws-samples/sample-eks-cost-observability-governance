@@ -176,8 +176,6 @@ jq --version
 
 ## Installation
 
-## Installation
-
 ### Step 1: Clone and Install Dependencies
 
 ```bash
@@ -187,6 +185,20 @@ cd sample-eks-cost-observability-governance
 # Install Python dependencies (requires uv: https://docs.astral.sh/uv/)
 make install AWS_PROFILE=your-profile
 ```
+
+### Step 1b: Run Integration Tests (Optional)
+
+Validate your Athena and S3 configuration before deploying:
+
+```bash
+ATHENA_S3_OUTPUT="s3://your-bucket/queryresults/" \
+ATHENA_DATABASE="your-cur-database" \
+ATHENA_TABLE="your-cur-table" \
+EKS_CLUSTER_NAME="your-cluster-name" \
+make test-integ AWS_PROFILE=your-profile
+```
+
+Tests will skip with a clear message if any required variable is missing.
 
 ### Step 2: Configure for Your Environment
 

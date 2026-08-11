@@ -6,48 +6,46 @@ by namespace, team, and other dimensions.
 """
 
 import logging
-import boto3
-from datetime import datetime, date, timedelta
-from decimal import Decimal
-from typing import List, Dict, Optional
 from collections import defaultdict
+from datetime import date, datetime
+from decimal import Decimal
+from typing import List, Optional
 
+import boto3
 from models.cost_data import (
-    CostRecord,
-    NamespaceCostSummary,
-    TeamCostSummary,
-    PodCostSummary,
-    CostCollectionSummary,
-    AttributionSummary,
-    DailyCost,
-    BusinessUnitCostSummary,
-    CostCenterCostSummary,
     ApplicationCostSummary,
-    WorkloadTypeCostSummary,
-    ClusterInfrastructureCostSummary,
+    AttributionSummary,
+    BusinessUnitCostSummary,
     ClusterCostBreakdown,
-    NamespaceCostUtilization
+    ClusterInfrastructureCostSummary,
+    CostCenterCostSummary,
+    CostCollectionSummary,
+    DailyCost,
+    NamespaceCostSummary,
+    NamespaceCostUtilization,
+    PodCostSummary,
+    WorkloadTypeCostSummary,
 )
 from utils.athena_helper import (
+    build_application_costs_query,
+    build_attribution_summary_query,
+    build_business_unit_costs_query,
+    build_cluster_infrastructure_costs_query,
+    build_cost_center_costs_query,
+    build_cost_utilization_query,
+    build_daily_cost_query,
+    build_namespace_aggregation_query,
+    build_top_cost_pods_query,
+    build_total_cluster_cost_query,
+    build_workload_type_costs_query,
     execute_athena_query,
     get_query_results,
-    build_namespace_aggregation_query,
-    build_attribution_summary_query,
-    build_top_cost_pods_query,
-    build_daily_cost_query,
-    build_business_unit_costs_query,
-    build_cost_center_costs_query,
-    build_application_costs_query,
-    build_workload_type_costs_query,
-    build_cluster_infrastructure_costs_query,
-    build_total_cluster_cost_query,
-    build_cost_utilization_query
 )
 from utils.cluster_infrastructure_config import (
+    get_all_infrastructure_namespaces,
     get_component_config,
     get_component_name,
-    get_all_infrastructure_namespaces,
-    is_cluster_infrastructure
+    is_cluster_infrastructure,
 )
 
 logger = logging.getLogger(__name__)

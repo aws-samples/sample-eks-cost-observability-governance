@@ -6,9 +6,8 @@ Low-level functions for executing Athena queries and parsing results.
 
 import logging
 import time
-import re
-from typing import Dict, List, Optional, Tuple
-import boto3
+from typing import Dict, List, Optional
+
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
@@ -109,7 +108,7 @@ def get_query_results(
 
         for page in page_iterator:
             rows = page['ResultSet']['Rows']
-            
+
             # First row is column headers
             if column_names is None and rows:
                 column_names = [col['VarCharValue'] for col in rows[0]['Data']]

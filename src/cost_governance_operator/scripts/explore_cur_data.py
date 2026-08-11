@@ -10,11 +10,11 @@ Usage:
 """
 
 import argparse
-import boto3
-import awswrangler as wr
-import pandas as pd
 from datetime import datetime, timedelta
-import json
+
+import awswrangler as wr
+import boto3
+import pandas as pd
 
 
 def setup_args():
@@ -213,13 +213,13 @@ def explore_eks_data(session, database, table, s3_output, cluster_name, lookback
         split_pct = (split / total * 100) if total > 0 else 0
 
         if split > 0:
-            print(f"✅ Split-cost allocation is enabled!")
+            print("✅ Split-cost allocation is enabled!")
             print(f"   Total Records: {total:,}")
             print(f"   Split-Cost Records: {split:,} ({split_pct:.1f}%)")
             print(f"   Split-Cost Total: ${df3['split_cost_total'].iloc[0]:,.2f}")
             print(f"   Unblended Cost Total: ${df3['unblended_cost_total'].iloc[0]:,.2f}")
         else:
-            print(f"⚠️  Split-cost allocation may not be enabled")
+            print("⚠️  Split-cost allocation may not be enabled")
             print(f"   Found {total:,} EKS records but no split-cost data")
             print("   Check: https://docs.aws.amazon.com/eks/latest/userguide/split-cost-allocation.html")
     except Exception as e:
@@ -348,7 +348,7 @@ def explore_eks_data(session, database, table, s3_output, cluster_name, lookback
                             print(f"      ... and {len(tags) - 10} more tags")
 
             if has_resource_tags:
-                print(f"\n   ✅ resource_tags column has data!")
+                print("\n   ✅ resource_tags column has data!")
                 print(f"   📊 Unique tag keys found: {len(all_tag_keys)}")
 
                 # Look for cost governance tags
@@ -361,12 +361,12 @@ def explore_eks_data(session, database, table, s3_output, cluster_name, lookback
                 found_cost_tags = [tag for tag in cost_tags if tag in all_tag_keys]
 
                 if found_cost_tags:
-                    print(f"\n   ✅ Cost governance tags found:")
+                    print("\n   ✅ Cost governance tags found:")
                     for tag in found_cost_tags:
                         print(f"      - {tag}")
                 else:
-                    print(f"\n   ⚠️  No standard cost governance tags found")
-                    print(f"   Available tag keys (first 20):")
+                    print("\n   ⚠️  No standard cost governance tags found")
+                    print("   Available tag keys (first 20):")
                     for tag in list(all_tag_keys)[:20]:
                         print(f"      - {tag}")
             else:
@@ -476,8 +476,8 @@ def explore_eks_data(session, database, table, s3_output, cluster_name, lookback
     print(f"   Table: {table}")
     print(f"   Cluster: {cluster_name}")
     print(f"   S3 Output: {s3_output}")
-    print(f"   Cost Column: split_line_item_split_cost")
-    print(f"   Tag Column: resource_tags (map)")
+    print("   Cost Column: split_line_item_split_cost")
+    print("   Tag Column: resource_tags (map)")
 
 
 def main():

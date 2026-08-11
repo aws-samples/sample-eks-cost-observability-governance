@@ -5,7 +5,7 @@ These models represent cost data from AWS Cost and Usage Reports (CUR 2.0)
 queried via Athena, with and without cost governance labels.
 """
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Dict, List, Optional
@@ -423,7 +423,9 @@ class ClusterCostBreakdown:
                     category: {
                         'totalCost': f'${float(totals["cost"]):.2f}',
                         'podCount': totals['pods'],
-                        'percentage': round(float(totals['cost'] / self.cluster_infrastructure_cost * 100), 1) if self.cluster_infrastructure_cost > 0 else 0.0
+                        'percentage': round(
+                            float(totals['cost'] / self.cluster_infrastructure_cost * 100), 1
+                        ) if self.cluster_infrastructure_cost > 0 else 0.0
                     }
                     for category, totals in category_totals.items()
                 },

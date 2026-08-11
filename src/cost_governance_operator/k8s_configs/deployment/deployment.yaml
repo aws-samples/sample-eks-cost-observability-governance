@@ -44,7 +44,7 @@ spec:
         - name: ATHENA_WORKGROUP
           value: "primary"
         - name: ATHENA_S3_OUTPUT
-          value: "s3://cost-usage-data-125192672223/"
+          value: "s3://cost-usage-data-125192672223/queryresults"
         - name: PROMETHEUS_URL
           value: "http://prometheus-server.monitoring.svc:9090"
         - name: COST_LOOKBACK_DAYS

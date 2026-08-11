@@ -3,18 +3,20 @@ Cost Governance Operator - Phase 3: Cost Collection + Violation Reporting
 Watches CostGovernance CRDs, scans pods for compliance, and collects cost data.
 Reports violations via Events, ViolationReport CRDs, and Prometheus metrics.
 """
-import kopf
 import logging
 import time
-from datetime import datetime, timezone, timedelta
-from kubernetes import client, config as k8s_config
-from prometheus_client import start_http_server
-from config import Config
-from validators.validators import Validator
-from utils.registry import load_registry_from_k8s
+from datetime import datetime, timedelta, timezone
+
+import kopf
 from collectors.athena_collector import AthenaCollector
-from reporters.violation_reporter import ViolationReporter
+from config import Config
 from exporters.prometheus_exporter import PrometheusExporter
+from kubernetes import client
+from kubernetes import config as k8s_config
+from prometheus_client import start_http_server
+from reporters.violation_reporter import ViolationReporter
+from utils.registry import load_registry_from_k8s
+from validators.validators import Validator
 
 # Configure logging
 logging.basicConfig(
@@ -44,8 +46,8 @@ def startup_handler(settings: kopf.OperatorSettings, **_):
     logger.info("=" * 60)
     logger.info("Cost Governance Operator - Phase 3: Cost Collection")
     logger.info("=" * 60)
-    logger.info(f"Operator starting...")
-    logger.info(f"Watching for CostGovernance resources")
+    logger.info("Operator starting...")
+    logger.info("Watching for CostGovernance resources")
     logger.info(f"Configuration: {Config.display()}")
     logger.info("=" * 60)
 
@@ -142,7 +144,10 @@ def _load_registry(spec, k8s_client, cg_name, cg_namespace, logger):
         if registry.infrastructure_namespaces:
             from utils.cluster_infrastructure_config import set_namespace_categories
             set_namespace_categories(registry.infrastructure_namespaces)
-            logger.info(f"Infrastructure namespaces set from registry: {list(registry.infrastructure_namespaces.keys())}")
+            logger.info(
+                f"Infrastructure namespaces set from registry: "
+                f"{list(registry.infrastructure_namespaces.keys())}"
+            )
     else:
         logger.warning("Failed to load registry - proceeding with label completeness check only")
         prometheus_exporter.record_scan_error('registry_load_failed', cg_name, cg_namespace)

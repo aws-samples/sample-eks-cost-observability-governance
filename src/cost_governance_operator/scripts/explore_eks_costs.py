@@ -10,11 +10,11 @@ Usage:
 """
 
 import argparse
-import boto3
-import awswrangler as wr
-import pandas as pd
 from datetime import datetime, timedelta
-from decimal import Decimal
+
+import awswrangler as wr
+import boto3
+import pandas as pd
 
 
 def setup_args():
@@ -423,7 +423,7 @@ def main():
     end_date = datetime.now().date()
     start_date = end_date - timedelta(days=args.days)
 
-    print(f"📊 Analysis Configuration:")
+    print("📊 Analysis Configuration:")
     print(f"   Database: {args.database}.{args.table}")
     print(f"   Cluster: {args.cluster}")
     print(f"   Date Range: {start_date} to {end_date} ({args.days} days)")
@@ -442,14 +442,14 @@ def main():
 
         print_section("Summary")
         print("✅ Analysis complete!")
-        print(f"\n📝 All queries executed successfully using actual CUR 2.0 tag structure")
-        print(f"   - aws_eks_cluster_name")
-        print(f"   - aws_eks_namespace")
-        print(f"   - aws_eks_workload_name")
-        print(f"   - aws_eks_workload_type")
-        print(f"   - user_business_unit")
-        print(f"   - user_cost_center")
-        print(f"   - user_application\n")
+        print("\n📝 All queries executed successfully using actual CUR 2.0 tag structure")
+        print("   - aws_eks_cluster_name")
+        print("   - aws_eks_namespace")
+        print("   - aws_eks_workload_name")
+        print("   - aws_eks_workload_type")
+        print("   - user_business_unit")
+        print("   - user_cost_center")
+        print("   - user_application\n")
 
     except Exception as e:
         print(f"\n❌ Analysis failed: {e}")

@@ -5,7 +5,7 @@ Defines how to categorize and attribute costs for system namespaces
 and cluster infrastructure components.
 """
 
-from typing import Dict, List, Optional, NamedTuple
+from typing import Dict, List, NamedTuple, Optional
 
 
 class ComponentConfig(NamedTuple):

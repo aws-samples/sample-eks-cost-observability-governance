@@ -22,8 +22,8 @@ Usage:
     # Metrics are automatically exposed via Kopf's /metrics endpoint
 """
 
+
 from prometheus_client import Counter, Gauge, Histogram, Info
-import logging
 
 
 class PrometheusExporter:
@@ -213,7 +213,11 @@ class PrometheusExporter:
                     by_type['MissingLabel'] = by_type.get('MissingLabel', 0) + 1
                     label = v_msg.split('Missing required label:')[1].strip()
                     by_label[label] = by_label.get(label, 0) + 1
-                elif 'missing resource requests' in v_msg.lower() or 'missing CPU request' in v_msg or 'missing memory request' in v_msg:
+                elif (
+                    'missing resource requests' in v_msg.lower()
+                    or 'missing CPU request' in v_msg
+                    or 'missing memory request' in v_msg
+                ):
                     by_type['MissingResourceRequests'] = by_type.get('MissingResourceRequests', 0) + 1
                 elif 'exceeds threshold' in v_msg.lower():
                     by_type['ExceedsResourceThreshold'] = by_type.get('ExceedsResourceThreshold', 0) + 1

@@ -32,23 +32,49 @@ from cost_governance_operator.utils import athena_helper
 @pytest.fixture(scope="module")
 def athena_config():
     """Shared Athena configuration from environment."""
-    profile = os.getenv("AWS_PROFILE", "brdcost")
+    profile = os.getenv("AWS_PROFILE")
     region = os.getenv("AWS_REGION", "us-east-1")
+
+    # Required env vars — skip with clear message if not set
+    required_vars = {
+        "AWS_PROFILE": profile,
+        "ATHENA_S3_OUTPUT": os.getenv("ATHENA_S3_OUTPUT"),
+        "ATHENA_DATABASE": os.getenv("ATHENA_DATABASE"),
+        "ATHENA_TABLE": os.getenv("ATHENA_TABLE"),
+        "EKS_CLUSTER_NAME": os.getenv("EKS_CLUSTER_NAME"),
+    }
+
+    missing = [k for k, v in required_vars.items() if not v]
+    if missing:
+        pytest.skip(
+            f"Integration tests require the following environment variables: {', '.join(missing)}. "
+            f"Example: ATHENA_S3_OUTPUT='s3://my-bucket/queryresults/' "
+            f"ATHENA_DATABASE='my_cur_db' ATHENA_TABLE='my_cur_table' "
+            f"EKS_CLUSTER_NAME='my-cluster' AWS_PROFILE='my-profile' "
+            f"make test-integ"
+        )
 
     lookback_days = int(os.getenv("COST_LOOKBACK_DAYS", "7"))
     end_date = datetime.now(timezone.utc).date()
     start_date = end_date - timedelta(days=lookback_days)
 
-    return {
-        "database": os.getenv("ATHENA_DATABASE", "billingdata"),
-        "table": os.getenv("ATHENA_TABLE", "data"),
-        "s3_output": os.getenv("ATHENA_S3_OUTPUT", "s3://athena-results-783837106602-us-east-1-an/"),
-        "cluster_name": os.getenv("EKS_CLUSTER_NAME", "cost-demo-eks-cluster"),
+    config = {
+        "database": required_vars["ATHENA_DATABASE"],
+        "table": required_vars["ATHENA_TABLE"],
+        "s3_output": required_vars["ATHENA_S3_OUTPUT"],
+        "cluster_name": required_vars["EKS_CLUSTER_NAME"],
         "start_date": start_date.isoformat(),
         "end_date": end_date.isoformat(),
         "profile": profile,
         "region": region,
     }
+
+    print("\n=== Integration Test Configuration ===")
+    for key, value in config.items():
+        print(f"  {key}: {value}")
+    print("======================================\n")
+
+    return config
 
 
 @pytest.fixture(scope="module")

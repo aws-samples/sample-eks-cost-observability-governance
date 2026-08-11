@@ -1,9 +1,10 @@
 """
 Registry management - loads and parses cost governance registry from ConfigMap.
 """
-import yaml
 import logging
 from typing import Dict, List, Optional
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
