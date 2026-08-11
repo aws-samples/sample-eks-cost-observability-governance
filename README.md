@@ -176,10 +176,10 @@ jq --version
 
 ## Installation
 
-### Step 1: Clone and Install Dependencies
+### Step 1: Clone repository and Install Dependencies
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/aws-samples/sample-eks-cost-observability-governance.git
 cd sample-eks-cost-observability-governance
 
 # Install Python dependencies (requires uv: https://docs.astral.sh/uv/)
@@ -397,7 +397,7 @@ cost_governance_compliance_rate{governance_name="default-governance"} 36.67
 ### 6. Verify ServiceMonitor
 
 ```bash
-kubectl get servicemonitor -n monitoring cost-governance-operator
+kubectl get servicemonitor -n cost-governance-system cost-governance-operator
 ```
 
 **Expected output:**
