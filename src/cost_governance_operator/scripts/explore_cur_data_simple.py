@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
 #!/usr/bin/env python3
 """
 CUR 2.0 Data Explorer Script (boto3-only version)

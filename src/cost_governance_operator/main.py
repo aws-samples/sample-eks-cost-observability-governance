@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
 """
 Cost Governance Operator - Phase 3: Cost Collection + Violation Reporting
 Watches CostGovernance CRDs, scans pods for compliance, and collects cost data.
