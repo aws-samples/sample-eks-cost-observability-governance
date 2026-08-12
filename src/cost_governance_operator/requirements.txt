@@ -4,6 +4,11 @@ pyyaml==6.0.2
 boto3==1.38.0
 prometheus-client==0.21.1
 
+# Pin transitive dependencies to address CVEs
+requests>=2.32.0
+urllib3>=2.3.0
+idna>=3.7
+
 # Phase 3: Cost Collection
 # Note: awswrangler has numpy dependency issues with Python 3.13
 # We'll use boto3 directly for Athena queries
