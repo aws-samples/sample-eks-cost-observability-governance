@@ -151,7 +151,7 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
   --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false
 ```
 
-### 5. Tools
+### 4. Tools
 
 Ensure you have these tools installed:
 
