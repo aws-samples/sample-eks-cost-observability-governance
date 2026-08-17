@@ -128,7 +128,7 @@ Verify **split-cost allocation** is enabled in your Billing and Cost Management 
 You must have CUR 2.0 enabled with Athena integration.
 
 
-### 4. Monitoring Stack (Prometheus + Grafana)
+### 3. Monitoring Stack (Prometheus + Grafana)
 
 The operator exports metrics to Prometheus. You need Prometheus Operator with Grafana.
 
