@@ -507,4 +507,4 @@ Contributions welcome! Please open an issue or pull request.
 For issues, questions, or feature requests:
 - Open an issue on GitHub
 - Check [Troubleshooting](./OPERATOR-DETAILED-GUIDE.md#troubleshooting) in the detailed guide
-- Review operator logs: `make logs`
+- Review operator logs: `make logs`.
