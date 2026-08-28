@@ -1,6 +1,6 @@
 <mxfile host="Electron" agent="Kiro">
   <diagram id="architecture" name="Cost Governance Architecture">
-    <mxGraphModel dx="1548" dy="1151" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+    <mxGraphModel dx="1258" dy="930" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -219,6 +219,9 @@
         </mxCell>
         <mxCell id="0SSB2a0glYdYjveh5iP--40" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="Enable EKS Split-Cost Allocation&lt;br&gt;Enable Cost Allocation tagging" vertex="1">
           <mxGeometry height="30" width="200" x="675" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="8GhITF8R7rXyHEnG8th8-1" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;b style=&quot;color: rgb(31, 31, 31);&quot;&gt;&lt;span data-contrast=&quot;none&quot; lang=&quot;EN-US&quot; class=&quot;TextRun SCXW67001016 BCX0&quot; style=&quot;-webkit-user-drag: none; -webkit-tap-highlight-color: transparent; margin: 0px; padding: 0px; user-select: text; text-align: left; background-color: rgb(255, 255, 255); font-size: 11pt; line-height: 19.55px; font-family: Arial, Arial_EmbeddedFont, Arial_MSFontService, sans-serif; font-variant-ligatures: none !important;&quot;&gt;&lt;span class=&quot;NormalTextRun SCXW67001016 BCX0&quot; style=&quot;-webkit-user-drag: none; -webkit-tap-highlight-color: transparent; margin: 0px; padding: 0px; user-select: text;&quot;&gt;Figure: Cost Governance Operator Architecture&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;EOP Selected SCXW67001016 BCX0&quot; data-ccp-props=&quot;{&amp;quot;335559739&amp;quot;:200}&quot; style=&quot;-webkit-user-drag: none; -webkit-tap-highlight-color: transparent; margin: 0px; padding: 0px; user-select: text; cursor: default; text-align: left; font-size: 11pt; line-height: 19.55px; font-family: Arial, Arial_EmbeddedFont, Arial_MSFontService, sans-serif; background-color: rgb(198, 198, 198); border-color: rgb(198, 198, 198);&quot;&gt;&amp;nbsp;&lt;/span&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="359.5" x="30" y="970" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
