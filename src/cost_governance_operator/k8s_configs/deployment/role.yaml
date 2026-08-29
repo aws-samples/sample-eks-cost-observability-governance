@@ -106,3 +106,7 @@ rules:
   verbs:
   - list
   - watch
+
+# NOTE: The admission webhook uses a STATIC ValidatingWebhookConfiguration
+# (applied via make deploy-webhook), so the operator does not need permission
+# to manage admissionregistration.k8s.io resources.
