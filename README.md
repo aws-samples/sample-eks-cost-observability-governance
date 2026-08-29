@@ -295,6 +295,49 @@ spec:
     namespace: cost-governance-system
 ```
 
+### Enforcement Modes
+
+The operator supports two modes, selected per CostGovernance resource via
+`spec.enforcementMode`:
+
+| Mode | Behavior |
+|------|----------|
+| `audit` (default) | Detects and reports non-compliant pods after they run (periodic scan → ViolationReports + metrics). Does not block anything. |
+| `enforce` | Additionally **rejects pods missing required labels at creation** via a validating admission webhook. |
+
+**Enforce mode** requires an admission webhook (a static `ValidatingWebhookConfiguration`
+plus a TLS cert Secret). Bring up the operator fully in enforce mode with one command:
+
+```bash
+make deploy-enforce-all AWS_PROFILE=your-profile
+```
+
+This runs the full bring-up in the correct order: Pod Identity → build/push image →
+CRDs → operator → registry → enforce-mode policy → admission webhook (generates the
+cert Secret, applies the static webhook config, and restarts the operator to mount the
+cert). The webhook uses `failurePolicy: Ignore` (fail-open), so if the operator is down
+pods are still admitted.
+
+To switch a running operator between modes, apply the corresponding policy — no
+reinstall needed:
+
+```bash
+make deploy-governance          AWS_PROFILE=your-profile   # audit
+make deploy-governance-enforce  AWS_PROFILE=your-profile   # enforce
+```
+
+Test enforcement (one compliant pod is admitted, one non-compliant pod is rejected):
+
+```bash
+kubectl apply -f src/cost_governance_operator/k8s_configs/examples/test-deployments/enforce-mode-demo.yaml
+```
+
+The `denied-pod` should be rejected with:
+```
+admission webhook "enforce-pod-labels.cost-governance.io" denied the request:
+  Pod rejected by cost governance: Missing required label: cost-center; ...
+```
+
 ### Step 7: Verify
 
 ```bash
@@ -459,8 +502,11 @@ For detailed documentation on metrics, cost attribution, violation reports, conf
 ## Quick Start Cheat Sheet
 
 ```bash
-# 1. Build and deploy
+# 1. Build and deploy (audit mode)
 make push AWS_PROFILE=<profile> && make deploy-all AWS_PROFILE=<profile>
+
+# 1b. Or bring up everything in ENFORCE mode (blocks non-compliant pods at creation)
+make deploy-enforce-all AWS_PROFILE=<profile>
 
 # 2. Deploy governance policy and test resources
 make deploy-tests AWS_PROFILE=<profile>

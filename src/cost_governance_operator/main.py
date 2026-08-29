@@ -6,6 +6,7 @@ Watches CostGovernance CRDs, scans pods for compliance, and collects cost data.
 Reports violations via Events, ViolationReport CRDs, and Prometheus metrics.
 """
 import logging
+import os
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -27,6 +28,66 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Default required labels when a CostGovernance spec omits them.
+DEFAULT_REQUIRED_LABELS = [
+    'cost-center', 'business-unit', 'team', 'application', 'environment'
+]
+
+# In-memory cache of the active governance policy, populated by the CostGovernance
+# create/update handlers. The admission webhook reads this on the pod-creation hot
+# path so it never has to make an API call per request. Keyed by "namespace/name".
+_active_policies: dict[str, dict] = {}
+
+
+def _cache_policy(name: str, namespace: str, spec: dict) -> None:
+    """Store the enforcement-relevant fields of a CostGovernance spec in the cache."""
+    _active_policies[f'{namespace}/{name}'] = {
+        'enforcementMode': spec.get('enforcementMode', 'audit'),
+        'requiredLabels': spec.get('requiredLabels') or DEFAULT_REQUIRED_LABELS,
+    }
+
+
+def _get_active_policy() -> dict | None:
+    """Return the most permissive-to-evaluate active policy, or None if none cached.
+
+    For this PoC a single CostGovernance policy governs the cluster, so we return
+    any cached policy. If several exist, prefer one in 'enforce' mode so enforcement
+    is not silently skipped.
+    """
+    if not _active_policies:
+        return None
+    for policy in _active_policies.values():
+        if policy.get('enforcementMode') == 'enforce':
+            return policy
+    return next(iter(_active_policies.values()))
+
+
+class ServiceWebhookServer(kopf.WebhookServer):
+    """Webhook server for in-cluster (EKS) operation.
+
+    Serves the admission HTTPS endpoint on 0.0.0.0:<port> using a pre-generated
+    certificate mounted from a Secret. The webhook is registered via a STATIC
+    ValidatingWebhookConfiguration (not managed by Kopf), whose caBundle matches
+    this cert's CA. Because the CA is fixed and the config is owned outside the
+    operator, neither rotates or gets wiped on restart -- avoiding the churn of
+    Kopf-managed webhook configurations on EKS.
+    """
+
+    def __init__(self, port: int, certfile: str, pkeyfile: str):
+        super().__init__(
+            # Bind all interfaces: the webhook runs in a pod and the API server
+            # reaches it via the Service, so binding to loopback would make it
+            # unreachable. TLS + a namespaced Service scope the exposure.
+            addr='0.0.0.0',  # nosec B104 - must be reachable via the Service
+            port=port,
+            # Serve with the pre-generated cert mounted from a Secret. The CA is
+            # fixed and matches the caBundle in the static webhook config, so it
+            # never rotates on restart.
+            certfile=certfile,
+            pkeyfile=pkeyfile,
+        )
+
+
 # Initialize Prometheus exporter (global singleton)
 prometheus_exporter = PrometheusExporter()
 
@@ -44,6 +105,41 @@ def startup_handler(settings: kopf.OperatorSettings, **_):
     settings.persistence.finalizer = 'cost-governance.io/finalizer'
     settings.persistence.progress_storage = kopf.AnnotationsProgressStorage()
     settings.persistence.diffbase_storage = kopf.AnnotationsDiffBaseStorage()
+
+    # Admission webhook (enforce mode). The operator only SERVES the webhook on
+    # an HTTPS port using a cert mounted from a Secret. It does NOT manage the
+    # ValidatingWebhookConfiguration -- that is a static manifest we apply once
+    # (see k8s_configs/webhook/). This avoids the fragility of Kopf-managed
+    # webhook configs on EKS (empty/rotated/wiped configs across restarts).
+    #
+    # Fail-open safety comes from the static config's failurePolicy: Ignore.
+    #
+    # If the cert files are not mounted yet (e.g. the webhook Secret has not been
+    # created), skip serving the webhook rather than crash-looping. Enforcement
+    # is simply inactive until the cert is present; the static config's
+    # failurePolicy: Ignore means pods are still admitted in the meantime.
+    if Config.WEBHOOK_ENABLED:
+        cert_present = (
+            os.path.exists(Config.WEBHOOK_CERT_FILE)
+            and os.path.exists(Config.WEBHOOK_KEY_FILE)
+        )
+        if cert_present:
+            settings.admission.managed = None  # we own the config, Kopf must not manage it
+            settings.admission.server = ServiceWebhookServer(
+                port=Config.WEBHOOK_PORT,
+                certfile=Config.WEBHOOK_CERT_FILE,
+                pkeyfile=Config.WEBHOOK_KEY_FILE,
+            )
+            logger.info(
+                f"Admission webhook serving on :{Config.WEBHOOK_PORT} "
+                f"(static config, fail-open)"
+            )
+        else:
+            logger.warning(
+                f"Webhook cert not found at {Config.WEBHOOK_CERT_FILE}; "
+                f"enforce mode is INACTIVE until the cert Secret is mounted. "
+                f"Run 'make deploy-webhook'."
+            )
 
     logger.info("=" * 60)
     logger.info("Cost Governance Operator - Phase 3: Cost Collection")
@@ -68,11 +164,31 @@ def get_k8s_client():
     return client.ApiClient()
 
 
+@kopf.on.resume('cost-governance.io', 'v1alpha1', 'costgovernances')
+def resume_handler(spec, name, namespace, logger, **kwargs):
+    """Re-adopt existing CostGovernance resources on operator (re)start.
+
+    Kopf fires on.resume (not on.create) for objects that already existed before
+    the operator started. Without this, the in-memory policy cache would be empty
+    after a restart and the admission webhook would have nothing to enforce.
+    """
+    _cache_policy(name, namespace, spec)
+    logger.info(
+        f"Resumed CostGovernance '{name}' — enforcement mode: "
+        f"{spec.get('enforcementMode', 'audit')}"
+    )
+    return {'message': 'CostGovernance resource resumed'}
+
+
 @kopf.on.create('cost-governance.io', 'v1alpha1', 'costgovernances')
 def create_handler(spec, name, namespace, logger, **kwargs):
     """Handle CostGovernance resource creation."""
     logger.info(f"CostGovernance '{name}' created in namespace '{namespace}'")
     logger.info(f"Spec: {spec}")
+
+    # Cache policy so the admission webhook can enforce it without an API call.
+    _cache_policy(name, namespace, spec)
+    logger.info(f"Enforcement mode: {spec.get('enforcementMode', 'audit')}")
 
     # Trigger initial compliance scan
     try:
@@ -90,7 +206,10 @@ def update_handler(spec, name, namespace, old, new, logger, **kwargs):
     logger.info(f"Old spec: {old.get('spec', {})}")
     logger.info(f"New spec: {new.get('spec', {})}")
 
-    # Phase 1: Just log, no actual processing
+    # Refresh the cached policy so enforcement picks up mode/label changes.
+    _cache_policy(name, namespace, spec)
+    logger.info(f"Enforcement mode: {spec.get('enforcementMode', 'audit')}")
+
     return {'message': 'CostGovernance resource updated successfully'}
 
 
@@ -99,14 +218,89 @@ def delete_handler(spec, name, namespace, logger, **kwargs):
     """Handle CostGovernance resource deletion."""
     logger.info(f"CostGovernance '{name}' deleted from namespace '{namespace}'")
 
-    # Phase 1: Just log, no actual cleanup needed
+    # Drop the cached policy so the webhook stops enforcing it.
+    _active_policies.pop(f'{namespace}/{name}', None)
+
     return {'message': 'CostGovernance resource deleted successfully'}
+
+
+# Namespaces the admission webhook never blocks, so system/operator workloads
+# can always start even in enforce mode.
+WEBHOOK_EXEMPT_NAMESPACES = {
+    'kube-system',
+    'kube-public',
+    'kube-node-lease',
+    'cost-governance-system',
+}
+
+
+# NOTE: id must be hyphenated (no underscores). Kopf uses the handler id as the
+# webhook's URL/path segment, and Kubernetes validates that segment as an
+# RFC 1123 subdomain, which forbids underscores.
+#
+# Do NOT set ignore_failures=True here: in Kopf that also suppresses handler
+# rejections (AdmissionError), so enforce mode could never deny. Fail-open
+# safety instead comes from the webhook config's failurePolicy: Ignore, which
+# Kopf sets -- that protects against the operator being unreachable without
+# disabling intentional denials.
+@kopf.on.validate('', 'v1', 'pods', operation='CREATE', id='enforce-pod-labels')
+def enforce_pod_labels(meta, namespace, labels, warnings, logger, **_):
+    """Admission webhook: check pods for required cost-attribution labels.
+
+    - enforce mode: reject pods missing required labels (raises AdmissionError).
+    - audit mode (or no policy): attach a warning but allow the pod.
+
+    System and operator namespaces are always exempt.
+    """
+    pod_labels = labels or {}
+    logger.info(
+        f"[webhook] admission review: namespace={namespace!r} "
+        f"label_keys={sorted(pod_labels.keys())} "
+        f"policies_cached={len(_active_policies)}"
+    )
+
+    if namespace in WEBHOOK_EXEMPT_NAMESPACES:
+        logger.info(f"[webhook] namespace {namespace} is exempt; allowing")
+        return
+
+    policy = _get_active_policy()
+    if not policy:
+        logger.warning("[webhook] no active CostGovernance policy cached; allowing")
+        return
+
+    required_labels = policy['requiredLabels']
+
+    # Reuse the same label-completeness check the periodic scanner uses.
+    violations = Validator.validate_label_completeness_static(pod_labels, required_labels)
+    logger.info(
+        f"[webhook] mode={policy['enforcementMode']} required={required_labels} "
+        f"violations={violations}"
+    )
+    if not violations:
+        return
+
+    pod_name = meta.get('name') or meta.get('generateName', '<unnamed>')
+    detail = '; '.join(violations)
+
+    if policy['enforcementMode'] == 'enforce':
+        logger.warning(f"DENY pod {namespace}/{pod_name}: {detail}")
+        raise kopf.AdmissionError(
+            f"Pod rejected by cost governance: {detail}. "
+            f"Required labels: {', '.join(required_labels)}."
+        )
+
+    # audit mode: surface the issue without blocking.
+    logger.info(f"AUDIT pod {namespace}/{pod_name}: {detail}")
+    warnings.append(f"cost-governance: {detail}")
 
 
 @kopf.on.timer('cost-governance.io', 'v1alpha1', 'costgovernances', interval=300.0)
 def compliance_scan_handler(spec, name, namespace, logger, **kwargs):
     """Periodic compliance scan - runs every 5 minutes."""
     logger.info(f"Running compliance scan for CostGovernance '{name}'")
+
+    # Keep the webhook's policy cache fresh (self-heals if resume didn't run).
+    _cache_policy(name, namespace, spec)
 
     try:
         perform_compliance_scan(spec, name, namespace, logger)

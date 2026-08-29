@@ -251,8 +251,28 @@ class Validator:
         Returns:
             List of violation messages (empty if compliant)
         """
+        return self.validate_label_completeness_static(labels, self.required_labels)
+
+    @staticmethod
+    def validate_label_completeness_static(
+        labels: Dict[str, str],
+        required_labels: List[str]
+    ) -> List[str]:
+        """
+        Check that all required labels are present and non-empty.
+
+        Stateless variant so callers (e.g. the admission webhook) can reuse the
+        rule without constructing a Validator (which loads Kubernetes config).
+
+        Args:
+            labels: Pod labels dictionary
+            required_labels: List of required label keys
+
+        Returns:
+            List of violation messages (empty if compliant)
+        """
         violations = []
-        for required in self.required_labels:
+        for required in required_labels:
             if required not in labels or not labels[required]:
                 violations.append(f"Missing required label: {required}")
         return violations

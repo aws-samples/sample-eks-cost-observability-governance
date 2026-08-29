@@ -1,4 +1,4 @@
-.PHONY: help install test test-unit test-cov lint security clean build info ecr-create-repo ecr-login push setup-pod-identity deploy-crds deploy-operator deploy-all undeploy logs deploy-registry deploy-governance deploy-test-apps deploy-test-violations deploy-tests undeploy-tests status violations reports events metrics grafana-connect prometheus-connect operator-connect restart dev-update dev-logs-violations dev-watch
+.PHONY: help install test test-unit test-cov lint security clean build info ecr-create-repo ecr-login push setup-pod-identity deploy-crds deploy-operator deploy-all deploy-enforce-all undeploy logs deploy-registry deploy-governance deploy-governance-enforce deploy-webhook undeploy-webhook deploy-test-apps deploy-test-violations deploy-tests undeploy-tests status violations reports events metrics grafana-connect prometheus-connect operator-connect restart dev-update dev-logs-violations dev-watch
 
 # Configuration
 # AWS_PROFILE must be provided: make <target> AWS_PROFILE=<profile>
@@ -52,13 +52,17 @@ help:
 	@echo "  make setup-pod-identity  Create IAM role and Pod Identity association"
 	@echo "  make deploy-crds       Deploy CRDs (CostGovernance + ViolationReport)"
 	@echo "  make deploy-operator   Deploy operator manifests"
-	@echo "  make deploy-all        Full deployment (pod-identity + CRDs + operator)"
+	@echo "  make deploy-all        Full deployment in AUDIT mode (pod-identity + CRDs + operator)"
+	@echo "  make deploy-enforce-all  Full deployment in ENFORCE mode (+ registry, policy, webhook)"
 	@echo "  make undeploy          Remove operator from cluster"
 	@echo "  make logs              Tail operator logs"
 	@echo ""
 	@echo "=== Deploy Test Resources ==="
 	@echo "  make deploy-registry       Deploy registry ConfigMap"
-	@echo "  make deploy-governance     Deploy CostGovernance instance"
+	@echo "  make deploy-governance     Deploy CostGovernance instance (audit mode)"
+	@echo "  make deploy-governance-enforce  Deploy CostGovernance instance (enforce mode)"
+	@echo "  make deploy-webhook        Deploy admission webhook (config + cert Secret)"
+	@echo "  make undeploy-webhook      Remove admission webhook and cert Secret"
 	@echo "  make deploy-test-apps      Deploy compliant test applications"
 	@echo "  make deploy-test-violations Deploy non-compliant test pods"
 	@echo "  make deploy-tests          Deploy all test resources"
@@ -228,9 +232,39 @@ deploy-operator: info
 	@echo "Check status with:"
 	@echo "  kubectl get pods -n $(NAMESPACE)"
 
+deploy-webhook:
+	@echo "Deploying admission webhook (enforce mode)..."
+	@echo "1. Generating serving cert Secret + applying webhook config with caBundle..."
+	$(OPERATOR_DIR)/k8s_configs/webhook/gen-certs.sh
+	@echo "2. Restarting operator to mount the new cert..."
+	kubectl rollout restart deployment/cost-governance-operator -n $(NAMESPACE)
+	kubectl rollout status deployment/cost-governance-operator -n $(NAMESPACE)
+	@echo "✓ Admission webhook deployed"
+
+undeploy-webhook:
+	@echo "Removing admission webhook..."
+	kubectl delete -f $(OPERATOR_DIR)/k8s_configs/webhook/validating-webhook-configuration.yaml --ignore-not-found=true
+	kubectl delete secret cost-governance-webhook-cert -n $(NAMESPACE) --ignore-not-found=true
+	@echo "✓ Admission webhook removed"
+
 deploy-all: setup-pod-identity deploy-crds deploy-operator
 	@echo ""
 	@echo "✓ Full deployment complete!"
+
+# One-command bring-up of the operator in ENFORCE mode, in the correct order:
+# pod-identity -> image -> CRDs -> operator -> registry + enforce policy -> webhook.
+# deploy-webhook creates the cert Secret and restarts the operator to serve it.
+# This is the enforce-mode counterpart of deploy-all (which brings up audit mode).
+deploy-enforce-all: setup-pod-identity push deploy-crds deploy-operator deploy-registry deploy-governance-enforce deploy-webhook
+	@echo ""
+	@echo "✓ Operator deployed in ENFORCE mode!"
+	@echo ""
+	@echo "Verify:"
+	@echo "  kubectl get pods -n $(NAMESPACE)"
+	@echo "  kubectl logs -n $(NAMESPACE) -l app=cost-governance-operator --tail=60 | grep -iE 'serving on|enforcement mode'"
+	@echo ""
+	@echo "Test:"
+	@echo "  kubectl apply -f $(OPERATOR_DIR)/k8s_configs/examples/test-deployments/enforce-mode-demo.yaml"
 
 undeploy:
 	@echo "Removing operator..."
@@ -259,9 +293,16 @@ deploy-registry:
 	@echo "✓ Registry deployed"
 
 deploy-governance:
-	@echo "Deploying CostGovernance instance..."
+	@echo "Deploying CostGovernance instance (audit mode)..."
 	kubectl apply -f $(OPERATOR_DIR)/k8s_configs/examples/cost-governance/cost-governance-instance.yaml
 	@echo "✓ CostGovernance instance deployed"
+
+deploy-governance-enforce:
+	@echo "Deploying CostGovernance instance (enforce mode)..."
+	kubectl apply -f $(OPERATOR_DIR)/k8s_configs/examples/cost-governance/cost-governance-instance-enforce.yaml
+	@echo "✓ CostGovernance instance deployed (enforce mode)"
+	@echo ""
+	@echo "Pods missing required labels will now be rejected at creation."
 
 deploy-test-apps:
 	@echo "Deploying compliant test applications..."

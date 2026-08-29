@@ -34,6 +34,13 @@ class Config:
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
     HEALTH_PORT = int(os.getenv('HEALTH_PORT', '8080'))
 
+    # Admission Webhook Configuration (enforce mode)
+    WEBHOOK_ENABLED = os.getenv('WEBHOOK_ENABLED', 'true').lower() == 'true'
+    WEBHOOK_PORT = int(os.getenv('WEBHOOK_PORT', '9443'))
+    # Serving cert/key mounted from the webhook cert Secret.
+    WEBHOOK_CERT_FILE = os.getenv('WEBHOOK_CERT_FILE', '/etc/webhook/certs/tls.crt')
+    WEBHOOK_KEY_FILE = os.getenv('WEBHOOK_KEY_FILE', '/etc/webhook/certs/tls.key')
+
     @classmethod
     def validate(cls):
         """Validate required configuration."""
@@ -63,5 +70,7 @@ class Config:
             'cost_lookback_days': cls.COST_LOOKBACK_DAYS,
             'prometheus_url': cls.PROMETHEUS_URL,
             'log_level': cls.LOG_LEVEL,
-            'health_port': cls.HEALTH_PORT
+            'health_port': cls.HEALTH_PORT,
+            'webhook_enabled': cls.WEBHOOK_ENABLED,
+            'webhook_port': cls.WEBHOOK_PORT
         }

@@ -1,0 +1,61 @@
+# Enforce-mode admission webhook demo
+#
+# Prereq: a CostGovernance resource with `spec.enforcementMode: enforce` is applied
+# (see examples/cost-governance/cost-governance-instance.yaml), and the operator is
+# running with the admission webhook enabled.
+#
+# Expected results when applying this file:
+#   - denied-pod    -> REJECTED by the webhook (missing required labels)
+#   - allowed-pod   -> CREATED (has all required labels)
+#
+# Try it:
+#   kubectl apply -f enforce-mode-demo.yaml
+#     Error from server: admission webhook "...cost-governance.io" denied the request:
+#       Pod rejected by cost governance: Missing required label: cost-center; ...
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: enforce-demo
+
+---
+# This pod is missing all required cost-attribution labels and MUST be denied
+# in enforce mode.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: denied-pod
+  namespace: enforce-demo
+  labels:
+    app: demo
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "64Mi"
+
+---
+# This pod carries all required labels and should be admitted.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: allowed-pod
+  namespace: enforce-demo
+  labels:
+    cost-center: "CC-1234"
+    business-unit: "engineering"
+    team: "platform-team"
+    application: "demo-app"
+    environment: "dev"
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "64Mi"
