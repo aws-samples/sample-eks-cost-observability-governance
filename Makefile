@@ -1,4 +1,4 @@
-.PHONY: help install test test-unit test-cov lint security clean build info ecr-create-repo ecr-login push setup-pod-identity deploy-crds deploy-operator deploy-all deploy-enforce-all undeploy logs deploy-registry deploy-governance deploy-governance-enforce deploy-webhook undeploy-webhook deploy-test-apps deploy-test-violations deploy-tests undeploy-tests status violations reports events metrics grafana-connect prometheus-connect operator-connect restart dev-update dev-logs-violations dev-watch
+.PHONY: help install test test-unit test-cov lint security clean build info ecr-create-repo ecr-login push setup-pod-identity deploy-crds deploy-operator deploy-all deploy-enforce-all undeploy logs deploy-registry deploy-governance deploy-governance-enforce deploy-webhook undeploy-webhook deploy-test-apps deploy-test-violations deploy-tests undeploy-tests status violations reports events metrics pod-costs grafana-connect prometheus-connect operator-connect restart dev-update dev-logs-violations dev-watch
 
 # Configuration
 # AWS_PROFILE must be provided: make <target> AWS_PROFILE=<profile>
@@ -26,6 +26,14 @@ FULL_IMAGE := $(ECR_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
 # IAM/Pod Identity configuration
 IAM_ROLE_NAME := CostGovernanceOperatorRole
 NAMESPACE := cost-governance-system
+
+# Athena/CUR configuration for ad-hoc cost reports (override on the command line
+# if your CUR setup differs, e.g. ATHENA_DATABASE=mydb make pod-costs ...).
+ATHENA_DATABASE ?= billingdata
+ATHENA_TABLE ?= data
+ATHENA_S3_OUTPUT ?= s3://cost-usage-data-$(AWS_ACCOUNT_ID)/queryresults/
+COST_LOOKBACK_DAYS ?= 10
+POD_COSTS_LIMIT ?= 25
 SERVICE_ACCOUNT := cost-governance-operator
 
 help:
@@ -52,8 +60,8 @@ help:
 	@echo "  make setup-pod-identity  Create IAM role and Pod Identity association"
 	@echo "  make deploy-crds       Deploy CRDs (CostGovernance + ViolationReport)"
 	@echo "  make deploy-operator   Deploy operator manifests"
-	@echo "  make deploy-all        Full deployment in AUDIT mode (pod-identity + CRDs + operator)"
-	@echo "  make deploy-enforce-all  Full deployment in ENFORCE mode (+ registry, policy, webhook)"
+	@echo "  make deploy-all        Full deployment in AUDIT mode (image, CRDs, operator, registry, policy, webhook)"
+	@echo "  make deploy-enforce-all  Full deployment in ENFORCE mode (same as deploy-all, enforce policy)"
 	@echo "  make undeploy          Remove operator from cluster"
 	@echo "  make logs              Tail operator logs"
 	@echo ""
@@ -74,6 +82,7 @@ help:
 	@echo "  make reports           List ViolationReports"
 	@echo "  make events            Show compliance violation events"
 	@echo "  make metrics           Port-forward to metrics endpoint"
+	@echo "  make pod-costs         Show per-pod costs from Athena (CUR 2.0)"
 	@echo "  make grafana-connect   Port-forward to Grafana dashboard"
 	@echo "  make prometheus-connect  Port-forward to Prometheus UI"
 	@echo "  make operator-connect  Port-forward to operator metrics"
@@ -233,7 +242,7 @@ deploy-operator: info
 	@echo "  kubectl get pods -n $(NAMESPACE)"
 
 deploy-webhook:
-	@echo "Deploying admission webhook (enforce mode)..."
+	@echo "Deploying admission webhook..."
 	@echo "1. Generating serving cert Secret + applying webhook config with caBundle..."
 	$(OPERATOR_DIR)/k8s_configs/webhook/gen-certs.sh
 	@echo "2. Restarting operator to mount the new cert..."
@@ -247,14 +256,19 @@ undeploy-webhook:
 	kubectl delete secret cost-governance-webhook-cert -n $(NAMESPACE) --ignore-not-found=true
 	@echo "✓ Admission webhook removed"
 
-deploy-all: setup-pod-identity deploy-crds deploy-operator
+# Full bring-up in AUDIT mode. Shares the same base as deploy-enforce-all and
+# differs ONLY by the policy applied (deploy-governance = audit). Order:
+# pod-identity -> image -> CRDs -> operator -> registry -> audit policy -> webhook.
+# deploy-webhook runs after deploy-operator because the operator registers a pod
+# admission handler and requires its serving cert (cert Secret +
+# ValidatingWebhookConfiguration) to run healthy. In audit mode the webhook warns
+# but does not block; blocking requires an enforce policy (see deploy-enforce-all).
+deploy-all: setup-pod-identity push deploy-crds deploy-operator deploy-registry deploy-governance deploy-webhook
 	@echo ""
-	@echo "✓ Full deployment complete!"
+	@echo "✓ Full deployment complete (AUDIT mode)!"
 
-# One-command bring-up of the operator in ENFORCE mode, in the correct order:
-# pod-identity -> image -> CRDs -> operator -> registry + enforce policy -> webhook.
-# deploy-webhook creates the cert Secret and restarts the operator to serve it.
-# This is the enforce-mode counterpart of deploy-all (which brings up audit mode).
+# Full bring-up in ENFORCE mode. Identical to deploy-all except it applies the
+# enforce-mode policy (deploy-governance-enforce) so non-compliant pods are rejected.
 deploy-enforce-all: setup-pod-identity push deploy-crds deploy-operator deploy-registry deploy-governance-enforce deploy-webhook
 	@echo ""
 	@echo "✓ Operator deployed in ENFORCE mode!"
@@ -380,6 +394,18 @@ metrics:
 	@echo "Press Ctrl+C to stop"
 	@echo ""
 	kubectl port-forward -n $(NAMESPACE) svc/cost-governance-operator 8000:8000
+
+pod-costs:
+	@echo "Querying per-pod costs from Athena (CUR 2.0)..."
+	uv run python $(OPERATOR_DIR)/scripts/pod_costs.py \
+		--profile $(AWS_PROFILE) \
+		--region $(AWS_REGION) \
+		--database $(ATHENA_DATABASE) \
+		--table $(ATHENA_TABLE) \
+		--cluster $(EKS_CLUSTER_NAME) \
+		--s3-output $(ATHENA_S3_OUTPUT) \
+		--days $(COST_LOOKBACK_DAYS) \
+		--limit $(POD_COSTS_LIMIT)
 
 grafana-connect:
 	@echo "Grafana admin password:"
