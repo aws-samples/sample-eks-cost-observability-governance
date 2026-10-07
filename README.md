@@ -267,6 +267,7 @@ This will:
 - Create EKS Pod Identity association
 - Deploy CRDs (`CostGovernance`, `ViolationReport`)
 - Deploy the operator, service, and ServiceMonitor to `cost-governance-system` namespace
+- Set up the admission webhook (cert Secret + `ValidatingWebhookConfiguration`) so the operator runs healthy
 
 ### Step 6: Create a CostGovernance Instance
 
