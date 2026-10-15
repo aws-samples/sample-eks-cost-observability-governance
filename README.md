@@ -14,6 +14,7 @@ A Kubernetes operator for EKS cost observability, attribution, and governance us
 - [Features](#features)
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
+  - [Permissions (IAM & RBAC)](#5-permissions)
 - [Installation](#installation)
 - [Verification](#verification)
 - [Further Reading](#further-reading)
@@ -25,9 +26,9 @@ A Kubernetes operator for EKS cost observability, attribution, and governance us
 
 ### What is the Cost Governance Operator?
 
-AWS Split-Cost Allocation for EKS is a powerful feature — it breaks down shared node costs to individual pods in Cost and Usage Reports, giving you granular cost observability that wasn't possible before. Add cost-allocation tags, and you can further enrich your CUR reports to give you detailed insignts.  But visibility alone isn't enough. Without governance, that data is only as good as the labels on your workloads. If workloads are missing required tags, or if tags are used inconsistently your cost data will be fragmented and inaccurate. Your cost reports will fill up with "unallocated" line items and inconsistent data and stop being trustworthy.
+AWS Split-Cost Allocation for EKS breaks down shared compute costs to individual pods in Cost and Usage Reports. this gives you a granular cost observability for EKS workloads. You can also use cost-allocation tags to further enrich your CUR report to get cost usage data by your custom labels. But visibility alone isn't enough. Without governance, that data is only as good as the labels on your workloads. If workloads are missing required tags, or if tags are used inconsistently your cost data will be fragmented and inaccurate. Your cost reports will fill up with "unallocated" line items and inconsistent data and stop being trustworthy.
 
-The Cost Governance Operator bridges that gap. It's a Kubernetes operator that runs alongside your workloads on EKS and continuously validates that pods have the correct cost attribution labels, checks those values against an approved registry, and reports violations before they turn into orphaned costs. It also queries your CUR 2.0 data through Athena to surface actual dollar costs attributed to teams, namespaces, and applications — and separates application spend from cluster infrastructure overhead like Karpenter, CoreDNS, and monitoring.
+The Cost Governance Operator bridges that gap. It's a Kubernetes operator that runs alongside your workloads on EKS and continuously validates that pods have the correct cost attribution labels, checks those values against an approved registry, and reports violations before they turn into orphaned costs. It also queries your CUR 2.0 data through Athena to surface actual dollar costs attributed to teams, namespaces, and applications and separates application spend from cluster infrastructure overhead like Karpenter, CoreDNS, and monitoring.
 
 
 ### How It Works
@@ -171,6 +172,21 @@ make --version
 # jq (for JSON parsing)
 jq --version
 ```
+
+### 5. Permissions
+
+The install steps create AWS and cluster resources on your behalf, so the user
+running `make` needs the following.
+
+**AWS IAM** (your `AWS_PROFILE`):
+- `iam:CreateRole`, `iam:PutRolePolicy` — create the operator's runtime role + Athena/S3 policy
+- `eks:CreateAddon`, `eks:CreatePodIdentityAssociation` — install Pod Identity and bind the role
+- `ecr:CreateRepository`, `ecr:GetAuthorizationToken` (+ image push) — publish the operator image
+
+**Kubernetes RBAC:**
+- Run with **cluster-admin** (or equivalent). Installation creates cluster-scoped
+  resources — CRDs, a `ClusterRole`/`ClusterRoleBinding` for the operator, and the
+  `ValidatingWebhookConfiguration` — which require cluster-level permissions.
 
 ---
 
